@@ -1,23 +1,32 @@
-// Answer check for a Gallowbrook elimination mystery. No answers are stored in readable form:
-// the page holds SHA-256 hashes of accepted answers and an AES-GCM-encrypted epilogue whose key is
-// derived (PBKDF2) from the correct answer. Nothing is sent anywhere; it all runs in the reader's browser.
+// Answer check for a Gallowbrook elimination mystery.
+//
+// Nothing in this file (or this page) contains the answer. The ticket number is checked against a slow,
+// salted PBKDF2 hash; the holder's name is checked by trying to decrypt the epilogue, which is AES-GCM
+// encrypted with a key derived (PBKDF2, hundreds of thousands of rounds) from the correct ticket and name.
+// Everything runs in your browser; nothing is sent anywhere.
+//
+// Constable Penn would like it noted that reading the source is exactly what Mrs. Ward does with envelopes,
+// holding them up to the lamp in the back room. It doesn't work for her either.
 (function () {
   const C = window.CASE;
   const enc = new TextEncoder();
   const hex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
   const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-  const sha = async s => hex(await crypto.subtle.digest('SHA-256', enc.encode(C.salt + '|' + s)));
 
-  function normTicket(v) { const d = (v || '').replace(/[^0-9]/g, '').replace(/^0+/, ''); return d; }
-  function words(v) { return (v || '').toLowerCase().normalize('NFKD').replace(/[^a-z\s'-]/g, ' ').split(/[\s'-]+/).filter(Boolean); }
-
-  async function decryptEpilogue(ticket, nameKey) {
-    const base = await crypto.subtle.importKey('raw', enc.encode(ticket + '|' + nameKey), 'PBKDF2', false, ['deriveKey']);
+  async function slowHash(s) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(s), 'PBKDF2', false, ['deriveBits']);
+    return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: unb64(C.tSalt), iterations: C.tIter, hash: 'SHA-256' }, base, 256));
+  }
+  async function tryEpilogue(ticket, word) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(ticket + '|' + word), 'PBKDF2', false, ['deriveKey']);
     const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: unb64(C.kdfSalt), iterations: C.iter, hash: 'SHA-256' },
       base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
-    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(C.iv) }, key, unb64(C.ct));
-    return new TextDecoder().decode(pt);
+    try { return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(C.iv) }, key, unb64(C.ct))); }
+    catch (e) { return null; }
   }
+  const normTicket = v => (v || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+  const words = v => Array.from(new Set((v || '').toLowerCase().normalize('NFKD').replace(/[^a-z\s'-]/g, ' ').split(/[\s'-]+/)
+    .filter(w => w.length > 1 && !['mr', 'mrs', 'miss', 'dr', 'the', 'commander', 'nurse', 'of'].includes(w)))).slice(0, 4);
 
   function say(lines, stamp) {
     const box = document.getElementById('reply');
@@ -27,23 +36,29 @@
     box.focus();
   }
 
-  document.getElementById('check').addEventListener('submit', async function (e) {
+  const form = document.getElementById('check');
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    if (!window.crypto || !crypto.subtle) { say(['THIS BROWSER CANNOT CHECK ANSWERS STOP', 'THE SOLUTION IS IN THE BACK OF YOUR BOOK STOP']); return; }
+    if (!window.crypto || !crypto.subtle) { say(['THIS BROWSER CANNOT SEND TELEGRAMS STOP', 'TRY ANOTHER BROWSER STOP']); return; }
     const t = normTicket(document.getElementById('ticket').value);
     const ws = words(document.getElementById('holder').value);
     if (!t) { say(['PLEASE GIVE THE TICKET NUMBER STOP', 'DIGITS ONLY STOP']); return; }
     if (!ws.length) { say(['PLEASE GIVE THE NAME OF THE PERSON WHO REALLY HELD IT STOP']); return; }
-    const tOk = (await sha('t:' + t)) === C.ticketHash;
-    let nameKey = null;
-    for (const w of ws) { if ((await sha('n:' + w)) === C.nameHash) { nameKey = w; break; } }
-    if (!tOk) { say(C.msg.wrongTicket); return; }
-    if (!nameKey) { say(C.msg.wrongName); return; }
+    const btn = form.querySelector('button.send'); btn.disabled = true; btn.textContent = 'Sending…';
+    say(['TELEGRAM SENT STOP', 'AWAITING REPLY FROM POLICE HOUSE STOP']);
     try {
-      const html = await decryptEpilogue(t, nameKey);
-      say(C.msg.right, 'Case closed');
-      const ep = document.createElement('div'); ep.className = 'epilogue'; ep.innerHTML = html;
-      document.getElementById('reply').appendChild(ep);
-    } catch (err) { say(['SOMETHING WENT WRONG ON THE LINE STOP', 'THE SOLUTION IS IN THE BACK OF YOUR BOOK STOP']); }
+      if ((await slowHash('t:' + C.slug + ':' + t)) !== C.ticketHash) { say(C.msg.wrongTicket); return; }
+      for (const w of ws) {
+        const html = await tryEpilogue(t, w);
+        if (html) {
+          say(C.msg.right, 'Case closed');
+          const ep = document.createElement('div'); ep.className = 'epilogue'; ep.innerHTML = html;
+          document.getElementById('reply').appendChild(ep);
+          const sv = document.getElementById('solved'); if (sv) sv.hidden = false;
+          return;
+        }
+      }
+      say(C.msg.wrongName);
+    } finally { btn.disabled = false; btn.textContent = 'Send to Constable Penn'; }
   });
 })();

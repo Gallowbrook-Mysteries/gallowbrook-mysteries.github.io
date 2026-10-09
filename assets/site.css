@@ -1,3 +1,4 @@
+/* Hester Quayle's rule for this stylesheet, as for her door: nobody gets past without signing. */
 :root {
   --felt: #24372e;        /* post-office counter baize */
   --felt-deep: #1b2a23;
@@ -106,3 +107,22 @@ footer { padding: 2rem 0 3rem; font-size: .92rem; color: var(--on-felt-soft); bo
   .reply.arrive p:nth-child(3) { animation-delay: .5s; }
   @keyframes tape { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 }
+
+.kicker { font-family: var(--type); font-size: .95rem; letter-spacing: .06em; color: var(--on-felt-soft); margin: 0 0 .4rem; }
+.hub-h { font-weight: 400; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1.1; margin: .5rem 0 1rem; color: #fbf7ea; }
+.btn { display: inline-block; font: 700 1rem var(--type); color: var(--buff); background: var(--ink); text-decoration: none; padding: .7rem 1.1rem; margin: .4rem .5rem .4rem 0; min-height: 44px; }
+.section .btn { background: var(--buff); color: var(--ink); }
+.solved { margin-top: 1.8rem; padding-top: 1.4rem; border-top: 2px dashed var(--ink-soft); }
+.solved-h { font-size: 1.4rem; margin: 0 0 .4rem; }
+.solved .field input { font-weight: 400; }
+.pick, .lookup input { font: 1.1rem var(--type); padding: .6rem .7rem; background: var(--buff); color: var(--ink); border: 0; min-height: 44px; }
+.lookup { display: flex; gap: .6rem; flex-wrap: wrap; }
+.lookup input { flex: 1 1 10rem; }
+.help-card { background: var(--buff); color: var(--ink); padding: 1.1rem 1.3rem; box-shadow: 0 14px 28px rgba(0,0,0,.3); }
+.help-card p { color: var(--ink); margin: 0 0 .7rem; }
+.rule-clue { font: 700 1rem var(--type); letter-spacing: .04em; background: var(--strip); display: inline-block; padding: .2rem .5rem; }
+.count { font-family: var(--type); }
+.rules li { margin-bottom: .4rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.telegram .muted { color: var(--ink-soft); }

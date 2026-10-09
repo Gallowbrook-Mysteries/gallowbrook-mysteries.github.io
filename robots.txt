@@ -1,0 +1,5 @@
+# Gallowbrook Police House
+# Nothing to see here. Move along.
+User-agent: *
+Disallow: /answers/
+# (There are no answers in /answers/. Constable Penn has looked.)
